@@ -8,9 +8,11 @@ import org.apache.http.client.config.{CookieSpecs, RequestConfig}
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.impl.client.HttpClients
+import org.apache.spark.sql.functions.{col, concat, explode, lit}
 import org.apache.spark.sql.types.IntegerType
-import org.apache.spark.sql.{SparkSession, functions}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession, functions}
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -84,11 +86,72 @@ object Runner {
   def langInTweets(spark: SparkSession, parDir: String): Unit ={
     import spark.implicits._
     val df = spark.read.parquet(parDir)
-    df.printSchema()
-    df.filter($"data.context_annotaions".isNotNull)
-      .select($"data.lang", $"data.context_annotations")
-      //.select($"data.lang", $"data.context_annotations.element.domain.name", $"data.context_annotation.element.entity.name")
-      .show()
+    //df.printSchema()
+    val langContextDF = df.filter($"data.context_annotations".isNotNull)
+      .select($"data.lang" as "language", explode($"data.context_annotations") as "col")
+      //.select($"data.lang", $"col.domain.description")//$"col.domain.name", $"col.domain.id", $"col.entity.description", $"col.entity.name", $"col.entity.id"
+
+//    langContextDF.printSchema()
+//    langContextDF.show()
+
+    val usefulLangContextDF = langContextDF.select($"language",
+      $"col.domain.description" as "domain_desc", $"col.domain.name" as "domain_name", $"col.domain.id" as "domain_id",
+      $"col.entity.description" as "entity_desc", $"col.entity.name" as "entity_name", $"col.entity.id" as "entity_id")
+    //($"col.domain.id".toString()+"."+$"col.entity.id".toString()).as("true_id")
+      .withColumn("full_id", concat(col("domain_id"), lit("."), col("entity_id")))
+      .withColumn("context", concat(col("domain_name"), lit(": "), col("entity_name")))
+
+    usefulLangContextDF.printSchema()
+//    usefulLangContextDF.show()
+
+    val fullRanking = usefulLangContextDF.groupBy($"language", $"context", $"full_id")
+      .count()
+      .sort($"count" desc)
+
+
+    fullRanking.printSchema()
+//    fullRanking.show()
+
+    val topicRanking = usefulLangContextDF.groupBy($"context" as "context_topic", $"full_id" as "full_id_topic")
+      .count()
+      .withColumnRenamed("count", "topicCount")
+      .sort($"topicCount" desc)
+
+
+    topicRanking.printSchema()
+    topicRanking.show()
+
+    val topTopics = topicRanking.select($"context_topic", $"topicCount", $"full_id_topic").collect().toList
+//    val topTopics = topicRanking.select($"full_id_topic").collect().map(r => r(0)).toList
+//    val topTopicsWordy = topicRanking.select($"context_topic").collect().map(r => r(0)).toList
+
+    val languageRanking = fullRanking.join(topicRanking)
+      .where($"full_id" === $"full_id_topic")
+      .select($"context", $"full_id", $"topicCount", $"count", $"language")
+      .withColumn("proportion", $"count"/$"topicCount")
+      .cache()
+
+    val resultBuffer: ListBuffer[(Any, Any, List[Row])] = ListBuffer()
+    val n = 9
+
+    for (ii <- 0 to n) {
+      resultBuffer.append((topTopics(ii)(0),
+        topTopics(ii)(1),
+        languageRanking
+          .select($"language", $"proportion")
+          .where($"full_id" === topTopics(ii)(2))
+          .sort($"proportion" desc)
+          .limit(10)
+          .collect()
+          .toList
+          ))
+    }
+
+    for (ii <- 0 to n) {
+      println(resultBuffer(ii))
+    }
+
+
   }
 
 }
