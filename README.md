@@ -14,6 +14,11 @@
 11. Who received the most followers this week, Biden or Trump
 12. On average, how many followers did {Biden, Trump} reveive each day this week?
 
+## To-DO
+1. Finalize queries - Push to Github from GoogleDocs
+2. Execture queries and analyze
+3. Create slides for the presentation (Google Slides?)
+4. Practice Presentation (Ideally before the weekend)
 
 ## Technologies
 - Apache Spark
