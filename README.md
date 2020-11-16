@@ -16,9 +16,9 @@
 
 
 ## Technologies
---Apache Spark
---Spark SQL
---YARN
---HDFS and/or S3
---Scala 2.12.10
---Git + GitHub
+-- Apache Spark
+-- Spark SQL
+-- YARN
+-- HDFS and/or S3
+-- Scala 2.12.10
+-- Git + GitHub
