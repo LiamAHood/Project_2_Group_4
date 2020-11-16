@@ -34,8 +34,9 @@ object Runner {
 
     //spark.sparkContext.setLogLevel("WARN")
 
-    parquetWritingDemo(spark, "twitterstream")
+    //parquetWritingDemo(spark, "twitterstream")
 
+    langInTweets(spark, "twitterstream.parquet")
   }
 
   def tweetStreamtoDir(bearerToken: String, fields: String="", dirname: String="twitterstream", linesPerFile: Int=100000, numFiles: Int=100) = {
@@ -78,6 +79,16 @@ object Runner {
     df.show()
     df.printSchema()
     df.write.parquet(s"${dirname}.parquet")
+  }
+
+  def langInTweets(spark: SparkSession, parDir: String): Unit ={
+    import spark.implicits._
+    val df = spark.read.parquet(parDir)
+    df.printSchema()
+    df.filter($"data.context_annotaions".isNotNull)
+      .select($"data.lang", $"data.context_annotations")
+      //.select($"data.lang", $"data.context_annotations.element.domain.name", $"data.context_annotation.element.entity.name")
+      .show()
   }
 
 }
