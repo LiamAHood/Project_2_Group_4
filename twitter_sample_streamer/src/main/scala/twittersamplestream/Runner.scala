@@ -15,6 +15,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession, functions}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.control.Exception.noCatch.desc
 
 object Runner {
   def main(args:Array[String]): Unit = {
@@ -38,7 +39,10 @@ object Runner {
 
     //parquetWritingDemo(spark, "twitterstream")
 
-    langInTweets(spark, "twitterstream.parquet")
+    //langInTweets(spark, "twitterstream.parquet")
+
+    popTweetUsers(spark, "twitterstream.parquet")
+
   }
 
   def tweetStreamtoDir(bearerToken: String, fields: String="", dirname: String="twitterstream", linesPerFile: Int=100000, numFiles: Int=100) = {
@@ -154,4 +158,19 @@ object Runner {
 
   }
 
+  def popTweetUsers(spark: SparkSession, parDir: String): Unit = {
+    import spark.implicits._
+    val df = spark.read.parquet(parDir)
+    df.printSchema()
+    val prelim = df.filter($"data.public_metrics".isNotNull)
+      .select($"data.author_id" as "user" , $"data.public_metrics.like_count" as "likes",
+        $"data.public_metrics.quote_count" as "quotes", $"data.public_metrics.reply_count" as "replies", $"data.public_metrics.retweet_count" as "retweets")
+      .groupBy($"user")
+      .sum("likes", "quotes", "replies", "retweets")
+      .sort($"sum(quotes)" desc)
+
+    prelim.printSchema()
+    prelim.show()
+
+  }
 }
