@@ -39,9 +39,9 @@ object Runner {
 
     //parquetWritingDemo(spark, "twitterstream")
 
-    //langInTweets(spark, "twitterstream.parquet")
+    langInTweets(spark, "twitterstream.parquet")
 
-    popTweetUsers(spark, "twitterstream.parquet")
+    //popTweetUsers(spark, "twitterstream.parquet")
 
   }
 
@@ -106,7 +106,7 @@ object Runner {
       .withColumn("context", concat(col("domain_name"), lit(": "), col("entity_name")))
 
     usefulLangContextDF.printSchema()
-//    usefulLangContextDF.show()
+    usefulLangContextDF.show()
 
     val fullRanking = usefulLangContextDF.groupBy($"language", $"context", $"full_id")
       .count()
@@ -125,35 +125,39 @@ object Runner {
     topicRanking.printSchema()
     topicRanking.show()
 
-    val topTopics = topicRanking.select($"context_topic", $"topicCount", $"full_id_topic").collect().toList
-//    val topTopics = topicRanking.select($"full_id_topic").collect().map(r => r(0)).toList
-//    val topTopicsWordy = topicRanking.select($"context_topic").collect().map(r => r(0)).toList
+    val topTopics = topicRanking.select($"context_topic", $"topicCount", $"full_id_topic")
+      .limit(20).collect().toList
 
-    val languageRanking = fullRanking.join(topicRanking)
-      .where($"full_id" === $"full_id_topic")
-      .select($"context", $"full_id", $"topicCount", $"count", $"language")
-      .withColumn("proportion", $"count"/$"topicCount")
-      .cache()
+    val topTopicsID = topicRanking.select($"full_id_topic").limit(20).collect().toList
+    println(topTopicsID)
 
-    val resultBuffer: ListBuffer[(Any, Any, List[Row])] = ListBuffer()
-    val n = 9
 
-    for (ii <- 0 to n) {
-      resultBuffer.append((topTopics(ii)(0),
-        topTopics(ii)(1),
-        languageRanking
-          .select($"language", $"proportion")
-          .where($"full_id" === topTopics(ii)(2))
-          .sort($"proportion" desc)
-          .limit(10)
-          .collect()
-          .toList
-          ))
-    }
 
-    for (ii <- 0 to n) {
-      println(resultBuffer(ii))
-    }
+//    val languageRanking = fullRanking.join(topicRanking)
+//      .where($"full_id" === $"full_id_topic")
+//      .select($"context", $"full_id", $"topicCount", $"count", $"language")
+//      .withColumn("proportion", $"count"/$"topicCount")
+//      .cache()
+
+//    val resultBuffer: ListBuffer[(Any, Any, List[Row])] = ListBuffer()
+//    val n = 9
+//
+//    for (ii <- 0 to n) {
+//      resultBuffer.append((topTopics(ii)(0),
+//        topTopics(ii)(1),
+//        languageRanking
+//          .select($"language", $"proportion")
+//          .where($"full_id" === topTopics(ii)(2))
+//          .sort($"proportion" desc)
+//          .limit(10)
+//          .collect()
+//          .toList
+//          ))
+//    }
+//
+//    for (ii <- 0 to n) {
+//      println(resultBuffer(ii))
+//    }
 
 
   }
