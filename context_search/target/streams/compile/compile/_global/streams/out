@@ -1,6 +1,7 @@
 [debug] Acquiring lock on file C:\Users\liamh\Project_2\Project_2_Group_4\context_search\project\target\.sbt-compilation-infos\context_search-compile\.sbt-idea-lock ...
-[warn] C:\Users\liamh\Project_2\Project_2_Group_4\context_search\src\main\scala\context_search\Runner.scala:17:5: a pure expression does nothing in statement position; multiline expressions might require enclosing parentheses
+[warn] C:\Users\liamh\Project_2\Project_2_Group_4\context_search\src\main\scala\context_search\Runner.scala:20:5: a pure expression does nothing in statement position; multiline expressions might require enclosing parentheses
 [warn]     """https://en.wikipedia.org/wiki/List_of_most-followed_Twitter_accounts"""
 [warn]     ^
-[warn] one warning found
+[warn] there were two feature warnings; re-run with -feature for details
+[warn] two warnings found
 [debug] Releasing lock on file C:\Users\liamh\Project_2\Project_2_Group_4\context_search\project\target\.sbt-compilation-infos\context_search-compile\.sbt-idea-lock.

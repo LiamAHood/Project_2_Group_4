@@ -36,38 +36,68 @@ object recent_search {
     }
   }
 
-  def tweetSearchFull(bearerToken: String, query: String, fields: String,  destName: String): Unit = {}
-
   def tweetsByContext(spark: SparkSession, bearerToken: String, contextStrings: List[String], fields: String, startTweet:String, destName: String, searchesPerFile: Int=100): Unit = {
 
     var untilID: String = startTweet
     var searches = 0
+    var index = 0
     for (cont <- contextStrings) {
       searches = 0
       untilID = startTweet
-      while (searches < searchesPerFile) {
-        val fileWriter = new PrintWriter(Paths.get("recenttweet.tmp").toFile)
-        val query = s"context:${cont}"
-        val searchResponse = tweetSearch(bearerToken, query, fields, until_id = untilID)
-        fileWriter.println(searchResponse)
-        fileWriter.close()
+      val fileWriter = new PrintWriter(Paths.get("recenttweet.tmp").toFile)
 
-        Files.move(
-          Paths.get("recenttweet.tmp"),
-          Paths.get(s"tweetfromcontext/${destName}_${cont}_${searches}")
-        )
+      while (searches < searchesPerFile) {
+
+        val query = s"context:${cont}"
+        val searchResponse = tweetSearch(bearerToken, query, fields, until_id = untilID, 100)
+
         if (searchResponse.contains("""{"data":""")){
-          untilID = spark.read.json(s"tweetfromcontext/${destName}_${cont}_${searches}")
-            .select("meta.oldest_id").collect()(0).toString()
+          fileWriter.println(searchResponse)
+          untilID = spark.sqlContext.read.json(spark.sparkContext.parallelize(Seq(searchResponse)))
+            .select("meta.oldest_id").collect().last.toString()
           untilID = untilID.drop(1).dropRight(1)
           searches += 1
         } else {
-          Files.delete(Paths.get(s"tweetfromcontext/${destName}_${cont}_${searches}"))
           searches = searchesPerFile
         }
 
       }
+
+      fileWriter.close()
+
+      Files.move(
+        Paths.get("recenttweet.tmp"),
+        Paths.get(s"${destName}/tweets_${index}_${searches}")
+      )
+      index += 1
     }
+//    for (cont <- contextStrings) {
+//      searches = 0
+//      untilID = startTweet
+//      while (searches < searchesPerFile) {
+//        val fileWriter = new PrintWriter(Paths.get("recenttweet.tmp").toFile)
+//        val query = s"context:${cont}"
+//        val searchResponse = tweetSearch(bearerToken, query, fields, until_id = untilID)
+//        fileWriter.println(searchResponse)
+//        fileWriter.close()
+//
+//        Files.move(
+//          Paths.get("recenttweet.tmp"),
+//          Paths.get(s"tweetfromcontext/${destName}_${cont}_${searches}")
+//        )
+//        if (searchResponse.contains("""{"data":""")){
+//
+//          untilID = spark.read.json(s"tweetfromcontext/${destName}_${cont}_${searches}")
+//            .select("meta.oldest_id").collect().last.toString()
+//          untilID = untilID.drop(1).dropRight(1)
+//          searches += 1
+//        } else {
+//          Files.delete(Paths.get(s"tweetfromcontext/${destName}_${cont}_${searches}"))
+//          searches = searchesPerFile
+//        }
+//
+//      }
+//    }
 
 
   }
