@@ -26,12 +26,14 @@ object StructuredStreamingDemo {
     val staticDf = spark.read.json("twitterstream2")
 
     //Dataframe of raw text and hashtags split up
-    def getHashTagQuery(inputDf: DataFrame): DataFrame = {
-      val hashTagQuery = inputDf
+    def getHashTagQuery(path: String): DataFrame = {
+
+      val staticDf = spark.read.parquet(path)
+
+      val hashTagQuery = staticDf
         .select($"data")
         .filter($"data.lang".equalTo("en") && $"data.entities.hashtags".isNotNull)
         .select($"data.text".as("text"), $"data.entities.hashtags.tag".as("hashtag"))
-        //.select($"data.text".as("text"), explode($"data.entities.hashtags.tag").as("hashtag"))
       hashTagQuery
     }
 
@@ -134,7 +136,7 @@ object StructuredStreamingDemo {
         .show()
     }
 
-    val hashTagQuery = getHashTagQuery(staticDf)
+    val hashTagQuery = getHashTagQuery("twitterstream.parquet")
 
     avgTweetLengthOfHash(hashTagQuery)
 
