@@ -1,5 +1,30 @@
 package twittersamplestream
 
+import java.io.{BufferedReader, InputStreamReader, PrintWriter}
+import java.lang.Thread.sleep
+import java.nio.file.{Files, Paths}
+
+import org.apache.http.client.config.{CookieSpecs, RequestConfig}
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.client.utils.URIBuilder
+import org.apache.http.impl.client.HttpClients
+import org.apache.spark.sql.catalyst.dsl.expressions.StringToAttributeConversionHelper
+import org.apache.spark.sql.functions.{asc, col, concat, explode, lit, round, udf}
+import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession, functions}
+
+import scala.collection.mutable._
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.io.Source
+import scala.util.control.Exception.noCatch.desc
+
+import org.apache.spark.sql.{DataFrame, SparkSession}
+
+import scala.collection.immutable.HashSet
+import scala.io.Source
+
 object Runner {
   def main(args:Array[String]): Unit = {
     //We have API keys, secrets, tokens from Twitter API
@@ -160,7 +185,8 @@ object Runner {
     import spark.implicits._
     val df = spark.read.parquet(parDir)
     df.printSchema()
-    val prelim = df.filter($"data.public_metrics".isNotNull)
+    val prelim = df
+      .filter($"data.public_metrics".isNotNull)
       .select($"data.author_id" as "user" , $"data.public_metrics.like_count" as "likes",
         $"data.public_metrics.quote_count" as "quotes", $"data.public_metrics.reply_count" as "replies", $"data.public_metrics.retweet_count" as "retweets")
       .groupBy($"user")
@@ -256,7 +282,6 @@ object Runner {
 
   val countWords = udf(wordCounter)
 
-
   //Which tweets based on hashtags are longer on average
   def avgTweetLengthOfHash(hashTagQuery: DataFrame): Unit = {
     //Dataframe with tweetlength
@@ -286,8 +311,8 @@ object Runner {
   }
 
   //Check to see which hashtags are positive/negative
-  def positiveOrNegativeTweet(hashTagQuery: DataFrame): Unit = {
-
+  def positiveOrNegativeTweet(hashTagQuery: DataFrame, spark: SparkSession): Unit = {
+    import spark.implicits._
     //udf for counting positive or negative value of words
     val ratingCounter: (String => Int) = (rawTweet: String) => {
 
@@ -322,20 +347,21 @@ object Runner {
 
     //Create a new column using the udf to create a rating for each tweet
     val tweetRating = hashTagQuery
-      .select($"text", $"hashtag")
-      .withColumn("rating", ratingCalc($"text"))
-      .select(explode($"hashtag").as("hashtag"),$"rating")
-      .groupBy($"hashtag")
+      .select(col("text"), col("hashtag"))
+      .withColumn("rating", ratingCalc(col("text")))
+      .select(explode(col("hashtag")).as("hashtag"),col("rating"))
+      .groupBy(col("hashtag"))
       .avg("rating")
 
     tweetRating
-      .orderBy(desc("avg(rating)"))
-      .select($"hashtag", round(col("avg(rating)"),2).as("rating"))
+//      .orderBy(desc("avg(rating)"))
+      .select(col("hashtag"), round(col("avg(rating)"),2).as("rating"))
+      .sort(col("rating") desc)
       .show()
 
     tweetRating
       .orderBy(asc("avg(rating)"))
-      .select($"hashtag", round(col("avg(rating)"),2).as("rating"))
+      .select(col("hashtag"), round(col("avg(rating)"),2).as("rating"))
       .show()
   }
 }
