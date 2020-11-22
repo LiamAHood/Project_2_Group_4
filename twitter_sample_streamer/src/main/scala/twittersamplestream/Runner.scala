@@ -39,6 +39,10 @@ object Runner {
 
     //parquetWritingDemo(spark, "twitterstream")
 
+    //popUserHashtags(spark, "twitterstream.parquet")
+
+    //popHashtags(spark, "twitterstream.parquet")
+
     langInTweets(spark, "twitterstream.parquet")
 
     //popTweetUsers(spark, "twitterstream.parquet")
@@ -175,6 +179,62 @@ object Runner {
 
     prelim.printSchema()
     prelim.show()
+
+  }
+
+  def popHashtags(spark: SparkSession, parDir: String): Unit = {
+
+    import spark.implicits._
+    val df = spark.read.parquet(parDir)
+    df.printSchema()
+
+    val tags_df = df.filter($"data.entities.hashtags".isNotNull)
+      .filter($"data.lang" === "en")
+      .select($"data.id".name("id"), explode(col("data.entities.hashtags.tag")).as("tags"))
+
+    val count_tags = tags_df.select($"id")
+      .groupBy($"id")
+      .count()
+
+    val join_df = tags_df.join(count_tags, tags_df.col("id") === count_tags.col("id"))
+
+    val tags_with_tags = join_df.filter($"count" >= 2)
+      .select($"tags")
+      .groupBy($"tags")
+      .count()
+      .sort($"count" desc)
+
+    tags_with_tags.printSchema()
+    tags_with_tags.show()
+
+  }
+
+  def popUserHashtags(spark: SparkSession, parDir: String): Unit = {
+    import spark.implicits._
+    val df = spark.read.parquet(parDir)
+    df.printSchema()
+
+    val popUsers = df.filter($"data.lang" === "en")
+      .select($"data.author_id", $"data.public_metrics.like_count")
+      .sort($"data.public_metrics.like_count" desc)
+      .limit(200)
+
+    val tweets = df.filter($"data.lang" === "en")
+      .filter($"data.entities.hashtags".isNotNull)
+      .select($"data.author_id", $"data.entities.hashtags.tag".as("hashtags"))
+
+    val tweetsByPopUsers = popUsers.join(tweets, popUsers.col("author_id") === tweets.col("author_id"))
+
+    tweetsByPopUsers.printSchema()
+    println("test")
+
+    val popUserTags = tweetsByPopUsers
+      .select(explode(col("hashtags")).as("singleTags"))
+      .groupBy("singleTags")
+      .count()
+      .sort($"count" desc)
+      .show()
+
 
   }
 }

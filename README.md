@@ -5,12 +5,11 @@
 2. Which hashtags are largely associated with positive/negative/neutral tweets? 
 3. Analyze how answers to questions change with different time frames.
 4. Which hashtags are seen the most with other hashtags? (i.e. tweets with more than one hashtag)
-5. Which hashtag is used the most by verified accounts?
-6. Which hashtags trended, faded, and trended again?
-7. In what language are most tweets relating to specific topics?
-8. Which popular account has the highest engagement? 
-9. What is the most popular recurring twitter hashtag that is mainly used on {day}? (Wednesday, Thursday, Friday, Saturday, and Sunday)?
-10. How many times did #{hashtag} get mentioned in a tweet on {day}? (#WednesdayWisdom, #TBT, #FridayFeeling, #Caturday, #SundayFunday)
+5. Which hashtag is used the most by popular accounts and how does that compare to normal accounts?
+6. In what language are most tweets relating to specific topics?
+7. Which popular account has the highest engagement? 
+8. What is the most popular recurring twitter hashtag that is mainly used on {day}? (Wednesday, Thursday, Friday, Saturday, and Sunday)?
+9. How many times did #{hashtag} get mentioned in a tweet on {day}? (#WednesdayWisdom, #TBT, #FridayFeeling, #Caturday, #SundayFunday)
 
 ## To-DO
 1. Finalize queries - Push to Github from GoogleDocs
