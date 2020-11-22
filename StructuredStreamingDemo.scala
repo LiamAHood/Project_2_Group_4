@@ -23,15 +23,15 @@ object StructuredStreamingDemo {
 
     spark.sparkContext.setLogLevel("WARN")
 
-    val staticDf = spark.read.json("twitterstream")
+    val staticDf = spark.read.json("twitterstream2")
 
     //Dataframe of raw text and hashtags split up
     def getHashTagQuery(inputDf: DataFrame): DataFrame = {
       val hashTagQuery = inputDf
         .select($"data")
         .filter($"data.lang".equalTo("en") && $"data.entities.hashtags".isNotNull)
-        //.select($"data.text", $"data.entities.hashtags.tag")
-        .select($"data.text".as("text"), explode($"data.entities.hashtags.tag").as("hashtag"))
+        .select($"data.text".as("text"), $"data.entities.hashtags.tag".as("hashtag"))
+        //.select($"data.text".as("text"), explode($"data.entities.hashtags.tag").as("hashtag"))
       hashTagQuery
     }
 
@@ -57,21 +57,27 @@ object StructuredStreamingDemo {
       //Dataframe with tweetlength
 
       val lowCountFilter = hashTagQuery
-        .select($"text", $"hashtag")
+        .select($"text", explode($"hashtag").as("hashtag"))
         .groupBy($"hashtag")
         .count()
         .select($"hashtag".as("hashtag2"),$"count")
         .filter($"count" > 100)
 
-      val tweetLengthQuery = lowCountFilter.join(hashTagQuery, lowCountFilter("hashtag2") === hashTagQuery("hashtag"))
-
-        .select($"text", $"hashtag", $"count")
+      val wordCountedTweets = hashTagQuery
+        .select($"text", $"hashtag")
         .withColumn("length", countWords($"text"))
+        .select($"length", explode($"hashtag").as("hashtag"))
+
+      val tweetLengthQuery = lowCountFilter.join(wordCountedTweets, lowCountFilter("hashtag2") === wordCountedTweets("hashtag"))
+
+        .select($"hashtag", $"length", $"count")
         .groupBy($"hashtag")
         .avg("length")
         .orderBy(desc("avg(length)"))
         .select($"hashtag", round(col("avg(length)"),2).as("avgLength"))
         .show()
+
+
     }
 
     //Check to see which hashtags are positive/negative
@@ -113,17 +119,18 @@ object StructuredStreamingDemo {
       val tweetRating = hashTagQuery
         .select($"text", $"hashtag")
         .withColumn("rating", ratingCalc($"text"))
+        .select(explode($"hashtag").as("hashtag"),$"rating")
         .groupBy($"hashtag")
         .avg("rating")
 
       tweetRating
         .orderBy(desc("avg(rating)"))
-        .select($"hashtag", $"avg(rating)".as("rating"))
+        .select($"hashtag", round(col("avg(rating)"),2).as("rating"))
         .show()
 
       tweetRating
         .orderBy(asc("avg(rating)"))
-        .select($"hashtag", $"avg(rating)".as("rating"))
+        .select($"hashtag", round(col("avg(rating)"),2).as("rating"))
         .show()
     }
 
