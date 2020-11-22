@@ -1,7 +1,7 @@
 package context_search
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{concat, explode, length, lit, sum}
+import org.apache.spark.sql.functions.{concat, explode, length, lit, round, sum}
 
 import scala.Int.int2double
 
@@ -29,9 +29,7 @@ object Runner {
     val destname = List("tweetfromcontext8", "tweetfromcontext16", "tweetfromcontext0")
 //    val untiltweet = List("1329333588563611648", "1329454384510545922", "1329575180495044610")
     val untiltweet = List("1328608812853387265", "1329091996670050309", "1329575180495044610")//17,18,20
-    //    recent_search.tweetsByContext(spark, bearerToken, contextCodes, fields,"1329879686965391360", destname, searchesPerFile = 30)
-    //    parquetWrite(spark, "tweetfromcontext")
-    //    val ii = 2
+
 //    for (ii <- List(1, 2)) {
 //      for (jj <- 1 to 16) {
 //        println(s"start sleep $jj")
@@ -42,12 +40,9 @@ object Runner {
 //      parquetWrite(spark, destname(ii))
 //      langRanking(spark, destname(ii), contextCodes)
 //    }
-    parquetWrite(spark, destname(0))
+//    parquetWrite(spark, destname(0))
     langRanking(spark, destname(0), contextCodes)
 
-
-    //    langRanking(spark, destname(1))
-//    langRanking(spark, destname(2))
   }
 
   def langRanking(spark: SparkSession, parquetName: String, filterOut: List[String]) = {
@@ -62,21 +57,6 @@ object Runner {
         concat($"context.domain.id", lit(".") as "context_id", $"context.entity.id") as "context_id", $"lang",
         $"metrics.like_count" as "like", $"metrics.quote_count" as "quote",
         $"metrics.reply_count" as "reply", $"metrics.retweet_count" as "retweet")
-//      .filter($"context_id".notEqual(filterOut(0)))
-//      .filter($"context_id".notEqual(filterOut(1)))
-//      .filter($"context_id".notEqual(filterOut(2)))
-//      .filter($"context_id".notEqual(filterOut(3)))
-//      .filter($"context_id".notEqual(filterOut(4)))
-//      .filter($"context_id".notEqual(filterOut(5)))
-//      .filter($"context_id".notEqual(filterOut(6)))
-//      .filter($"context_id".notEqual(filterOut(7)))
-//      .filter($"context_id".notEqual(filterOut(8)))
-//      .filter($"context_id".notEqual(filterOut(9)))
-//      .filter($"context_id".notEqual(filterOut(10)))
-//      .filter($"context_id".notEqual(filterOut(11)))
-//      .filter($"context_id".notEqual(filterOut(12)))
-//      .filter($"context_id".notEqual(filterOut(13)))
-//      .filter($"context_id".notEqual(filterOut(14)))
 
 
     val countT = df
@@ -91,23 +71,32 @@ object Runner {
 
     val countdf = countT
       .join(countLT, "context")
-      .select($"context", $"topic_count", $"lang", $"count")
-      .withColumn("percent",  ($"count"/$"topic_count")*100)
+      .select($"context", $"topic_count", $"lang", $"count",
+        round(($"count"/$"topic_count")*100,2) as "percent")
       .drop("count")
-      .filter($"percent" > 5.0)
+      .filter($"percent" > 1.0)
       .sort($"topic_count" desc, $"percent" desc)
 
-    countdf.show(100)
+    countdf.limit(50).coalesce(1).write.csv(s"${parquetName}_tweet_count.csv")
 
-//    val interactionsLT = df
-//      .groupBy($"context", $"lang")
-//      .sum("like", "quote", "reply", "retweet")
-//      .withColumnRenamed("sum(like)", "likes")
-//      .withColumnRenamed("sum(quote)", "quotes")
-//      .withColumnRenamed("sum(reply)", "replies")
-//      .withColumnRenamed("sum(retweet)", "retweets")
-//
-//    interactionsLT.show()
+
+    val interactionsLT = df
+      .groupBy($"context", $"lang")
+      .sum("like", "quote", "reply", "retweet")
+      .withColumnRenamed("sum(like)", "likes")
+      .withColumnRenamed("sum(quote)", "quotes")
+      .withColumnRenamed("sum(reply)", "replies")
+      .withColumnRenamed("sum(retweet)", "retweets")
+      .select($"context", $"lang", ($"likes" + $"quotes" + $"retweets" + $"replies") as "interactions")
+//        $"likes", $"quotes", $"replies", $"retweets")
+//      .select($"context", $"lang", $"interactions",
+//        round(($"likes"/$"interactions")*100, 2) as "like_percent",
+//        round(($"quotes"/$"interactions")*100, 2) as "quote_percent",
+//        round(($"replies"/$"interactions")*100, 2) as "reply_percent",
+//        round(($"retweets"/$"interactions")*100, 2) as "retweet_percent")
+      .sort($"interactions" desc)
+
+    interactionsLT.limit(50).coalesce(1).write.csv(s"${parquetName}_interaction_count.csv")
 
   }
 
