@@ -32,7 +32,6 @@ object Runner {
     val dirname = "rawTweets"
     //recent_search.tweetsByUsers(bearerToken = bearerToken, userNames = topUsers, fields = fields, destName = dirname, tweetsPerFile = 100)
 
-
     val userMetrics = spark.read.option("header", "true").json(s"${dirname}_userdata")
       .select(explode($"data"))
       .select($"col.name", $"col.username", $"col.public_metrics.followers_count"/1000000 as "Followers_Millions")
@@ -62,13 +61,16 @@ object Runner {
     val avgMetrics = aggMetrics.select($"Name", $"Average_Engagement_Thousands", $"Average_Engagement_Per_Thous_Followers")
       .sort($"Average_Engagement_Thousands" desc)
     avgMetrics.show()
+    avgMetrics.coalesce(1).write.csv(s"avgmetric_csv")
 
     val avgMetricsN = avgMetrics.sort($"Average_Engagement_Per_Thous_Followers" desc)
     avgMetricsN.show()
 
+
     val totMetrics = aggMetrics.select($"Name", $"Total_Engagement_Thousands", $"Total_Engagement_Per_Thous_Followers")
       .sort($"Total_Engagement_Thousands" desc)
     totMetrics.show()
+    totMetrics.coalesce(1).write.csv(s"totmetric_csv")
 
     val totMetricsN = totMetrics.sort($"Total_Engagement_Per_Thous_Followers" desc)
     totMetricsN.show()
@@ -77,6 +79,7 @@ object Runner {
       $"Total_Engagement_Per_Thous_Followers", $"Average_Engagement_Per_Thous_Followers",
       $"Like_Percent", $"Quote_Percent", $"Retweet_Percent", $"Reply_Percent")
       .sort($"Followers_Millions" desc)
+//    engMetrics.coalesce(1).write.csv(s"topuser_csv")
     engMetrics.show()
 //
 
