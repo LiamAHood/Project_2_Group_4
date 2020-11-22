@@ -1,22 +1,5 @@
 package twittersamplestream
 
-import java.io.{BufferedReader, InputStreamReader, PrintWriter}
-import java.lang.Thread.sleep
-import java.nio.file.{Files, Paths}
-
-import org.apache.http.client.config.{CookieSpecs, RequestConfig}
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.client.utils.URIBuilder
-import org.apache.http.impl.client.HttpClients
-import org.apache.spark.sql.functions.{col, concat, explode, lit}
-import org.apache.spark.sql.types.IntegerType
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession, functions}
-
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.util.control.Exception.noCatch.desc
-
 object Runner {
   def main(args:Array[String]): Unit = {
     //We have API keys, secrets, tokens from Twitter API
@@ -46,6 +29,13 @@ object Runner {
     langInTweets(spark, "twitterstream.parquet")
 
     //popTweetUsers(spark, "twitterstream.parquet")
+
+    //Jordan Questions
+//    val hashTagQuery = getHashTagQuery("twitterstream.parquet")
+//
+//    avgTweetLengthOfHash(hashTagQuery)
+//
+//    positiveOrNegativeTweet(hashTagQuery)
 
   }
 
@@ -236,5 +226,116 @@ object Runner {
       .show()
 
 
+  }
+
+
+  def getHashTagQuery(path: String): DataFrame = {
+
+    val staticDf = spark.read.parquet(path)
+
+    val hashTagQuery = staticDf
+      .select($"data")
+      .filter($"data.lang".equalTo("en") && $"data.entities.hashtags".isNotNull)
+      .select($"data.text".as("text"), $"data.entities.hashtags.tag".as("hashtag"))
+    hashTagQuery
+  }
+
+
+  val wordCounter: (String => Int) = (rawTweet: String) => {
+    val tweetWords = rawTweet.split(" +")
+
+    var tweetLength = 0
+
+    tweetWords.foreach(f =>
+      if(!f.contains('@') && !f.contains('#')){
+        tweetLength += 1
+      }
+    )
+    tweetLength
+  }
+
+  val countWords = udf(wordCounter)
+
+
+  //Which tweets based on hashtags are longer on average
+  def avgTweetLengthOfHash(hashTagQuery: DataFrame): Unit = {
+    //Dataframe with tweetlength
+
+    val lowCountFilter = hashTagQuery
+      .select($"text", explode($"hashtag").as("hashtag"))
+      .groupBy($"hashtag")
+      .count()
+      .select($"hashtag".as("hashtag2"),$"count")
+      .filter($"count" > 100)
+
+    val wordCountedTweets = hashTagQuery
+      .select($"text", $"hashtag")
+      .withColumn("length", countWords($"text"))
+      .select($"length", explode($"hashtag").as("hashtag"))
+
+    val tweetLengthQuery = lowCountFilter.join(wordCountedTweets, lowCountFilter("hashtag2") === wordCountedTweets("hashtag"))
+
+      .select($"hashtag", $"length", $"count")
+      .groupBy($"hashtag")
+      .avg("length")
+      .orderBy(desc("avg(length)"))
+      .select($"hashtag", round(col("avg(length)"),2).as("avgLength"))
+      .show()
+
+
+  }
+
+  //Check to see which hashtags are positive/negative
+  def positiveOrNegativeTweet(hashTagQuery: DataFrame): Unit = {
+
+    //udf for counting positive or negative value of words
+    val ratingCounter: (String => Int) = (rawTweet: String) => {
+
+      //split the input string up into a list of words
+      var tweetWords = rawTweet.toLowerCase().split(" +")
+      //clean up any punctuation
+      tweetWords = tweetWords.map(_.replaceAll("[\\.|,|;|?+|!+]", ""))
+
+      var rating = 0;
+
+      val positiveWordsList: List[String] = Source.fromFile("./word-files/positive-words").getLines.toList
+      val positiveWordsHash: HashSet[String] = HashSet() ++ positiveWordsList
+
+      val negativeWordsList: List[String] = Source.fromFile("./word-files/negative-words").getLines.toList
+      val negativeWordsHash: HashSet[String] = HashSet() ++ negativeWordsList
+
+      //Check if the word is positive, negative, or neutral
+      tweetWords.foreach(f =>
+        if (positiveWordsHash(f)) {
+          rating += 1
+        }
+        else if (negativeWordsHash(f)) {
+          rating -= 1
+        }
+      )
+      //return the total
+      rating
+    }
+
+    //name the udf
+    val ratingCalc = udf(ratingCounter)
+
+    //Create a new column using the udf to create a rating for each tweet
+    val tweetRating = hashTagQuery
+      .select($"text", $"hashtag")
+      .withColumn("rating", ratingCalc($"text"))
+      .select(explode($"hashtag").as("hashtag"),$"rating")
+      .groupBy($"hashtag")
+      .avg("rating")
+
+    tweetRating
+      .orderBy(desc("avg(rating)"))
+      .select($"hashtag", round(col("avg(rating)"),2).as("rating"))
+      .show()
+
+    tweetRating
+      .orderBy(asc("avg(rating)"))
+      .select($"hashtag", round(col("avg(rating)"),2).as("rating"))
+      .show()
   }
 }
