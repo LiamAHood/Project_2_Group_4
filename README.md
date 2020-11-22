@@ -9,10 +9,8 @@
 6. Which hashtags trended, faded, and trended again?
 7. In what language are most tweets relating to specific topics?
 8. Which popular account has the highest engagement? 
-9. How many times did #{hashtag} get mentioned in a tweet on {day}? (MotivationMonday, TransformationTuesday, WednesdayWisdom, FridayFeeling, Caturday, SundayFunday)
-10. Which hashtag of the seven was mentioned most?
-11. Who received the most followers this week, Biden or Trump
-12. On average, how many followers did {Biden, Trump} reveive each day this week?
+9. What is the most popular recurring twitter hashtag that is mainly used on {day}? (Wednesday, Thursday, Friday, Saturday, and Sunday)?
+10. How many times did #{hashtag} get mentioned in a tweet on {day}? (#WednesdayWisdom, #TBT, #FridayFeeling, #Caturday, #SundayFunday)
 
 ## To-DO
 1. Finalize queries - Push to Github from GoogleDocs
