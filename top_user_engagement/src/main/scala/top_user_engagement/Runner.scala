@@ -1,16 +1,7 @@
 package top_user_engagement
 
-import java.io.PrintWriter
-import java.nio.file.{Files, Paths}
-
-import org.apache.http.client.config.{CookieSpecs, RequestConfig}
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.client.utils.URIBuilder
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.util.EntityUtils
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
 object Runner {
   def main(args: Array[String]):Unit = {
@@ -22,7 +13,7 @@ object Runner {
     import spark.implicits._
     spark.sparkContext.setLogLevel("WARN")
 
-    """https://en.wikipedia.org/wiki/List_of_most-followed_Twitter_accounts"""
+    //https://en.wikipedia.org/wiki/List_of_most-followed_Twitter_accounts
     val topUsers = List("BarackObama", "justinbieber", "katyperry", "rihanna", "Cristiano",
           "realDonaldTrump", "taylorswift13", "ladygaga", "TheEllenShow", "ArianaGrande",
           "YouTube", "KimKardashian", "jtimberlake", "selenagomez", "narendramodi",
@@ -30,8 +21,11 @@ object Runner {
     val tweetFields = "author_id,public_metrics,referenced_tweets,source,text,created_at"
     val fields = s"tweet.fields=$tweetFields"
     val dirname = "rawTweets"
-    //recent_search.tweetsByUsers(bearerToken = bearerToken, userNames = topUsers, fields = fields, destName = dirname, tweetsPerFile = 100)
 
+    //Actually doing the search
+    recent_search.tweetsByUsers(bearerToken = bearerToken, userNames = topUsers, fields = fields, destName = dirname, tweetsPerFile = 100)
+
+    //calculating metrics
     val userMetrics = spark.read.option("header", "true").json(s"${dirname}_userdata")
       .select(explode($"data"))
       .select($"col.name", $"col.username", $"col.public_metrics.followers_count"/1000000 as "Followers_Millions")
@@ -79,7 +73,7 @@ object Runner {
       $"Total_Engagement_Per_Thous_Followers", $"Average_Engagement_Per_Thous_Followers",
       $"Like_Percent", $"Quote_Percent", $"Retweet_Percent", $"Reply_Percent")
       .sort($"Followers_Millions" desc)
-//    engMetrics.coalesce(1).write.csv(s"topuser_csv")
+    engMetrics.coalesce(1).write.csv(s"topuser_csv")
     engMetrics.show()
 //
 

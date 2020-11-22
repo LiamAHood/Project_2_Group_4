@@ -1,0 +1,13 @@
+[debug] Packaging C:\Users\liamh\Project_2\Project_2_Group_4\context_search\target\scala-2.12\context_search_2.12-0.1.jar ...
+[debug] Input file mappings:
+[debug] 	context_search
+[debug] 	  C:\Users\liamh\Project_2\Project_2_Group_4\context_search\target\scala-2.12\classes\context_search
+[debug] 	context_search\recent_search$.class
+[debug] 	  C:\Users\liamh\Project_2\Project_2_Group_4\context_search\target\scala-2.12\classes\context_search\recent_search$.class
+[debug] 	context_search\recent_search.class
+[debug] 	  C:\Users\liamh\Project_2\Project_2_Group_4\context_search\target\scala-2.12\classes\context_search\recent_search.class
+[debug] 	context_search\Runner$.class
+[debug] 	  C:\Users\liamh\Project_2\Project_2_Group_4\context_search\target\scala-2.12\classes\context_search\Runner$.class
+[debug] 	context_search\Runner.class
+[debug] 	  C:\Users\liamh\Project_2\Project_2_Group_4\context_search\target\scala-2.12\classes\context_search\Runner.class
+[debug] Done packaging.

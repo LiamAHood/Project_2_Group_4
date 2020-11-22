@@ -17,7 +17,7 @@ object Runner {
     import spark.implicits._
     spark.sparkContext.setLogLevel("ERROR")
 
-    """https://en.wikipedia.org/wiki/List_of_most-followed_Twitter_accounts"""
+    //https://en.wikipedia.org/wiki/List_of_most-followed_Twitter_accounts
 //    val contextCodes = List(
 //      "55.888105153038958593", "35.799022225751871488", "46.781974596752842752", "123.1220701888179359745",
 //      "45.781974597310615553", "65.847868745150119936", "118.1310589758536478721", "66.824777229892661248", "55.810938279801470977",
@@ -30,17 +30,17 @@ object Runner {
 //    val untiltweet = List("1329333588563611648", "1329454384510545922", "1329575180495044610")
     val untiltweet = List("1328608812853387265", "1329091996670050309", "1329575180495044610")//17,18,20
 
-//    for (ii <- List(1, 2)) {
-//      for (jj <- 1 to 16) {
-//        println(s"start sleep $jj")
-//        Thread.sleep(60000)
-//        println(s"end sleep $jj")
-//      }
-//      recent_search.tweetsByContext(spark, bearerToken, contextCodes, fields, untiltweet(ii), destname(ii), searchesPerFile = 50)
-//      parquetWrite(spark, destname(ii))
-//      langRanking(spark, destname(ii), contextCodes)
-//    }
-//    parquetWrite(spark, destname(0))
+    for (ii <- List(1, 2)) {
+      for (jj <- 1 to 16) {
+        println(s"start sleep $jj")
+        Thread.sleep(60000)
+        println(s"end sleep $jj")
+      }
+      recent_search.tweetsByContext(spark, bearerToken, contextCodes, fields, untiltweet(ii), destname(ii), searchesPerFile = 50)
+      parquetWrite(spark, destname(ii))
+      langRanking(spark, destname(ii), contextCodes)
+    }
+    parquetWrite(spark, destname(0))
     langRanking(spark, destname(0), contextCodes)
 
   }
